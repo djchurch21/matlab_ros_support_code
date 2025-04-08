@@ -1,49 +1,72 @@
-function [res,state] = doGrip(type,optns,doGripValue )
+function [res, state] = doGrip(type, optns, doGripValue)
 %--------------------------------------------------------------------------
-% Tell gripper to either pick or place via the ros gripper action client
+% doGrip
+% Tell gripper to either pick or place via the ROS gripper action client.
 %
-% Input: type (string) - 'pick' or 'place'
-% Output: actoin result and state
+% Inputs:
+%   type (string) - 'pick' or 'place'
+%   optns - containers.Map with robot handle under key 'rHandle'
+%   doGripValue (optional) - value for grip position
+%
+% Outputs:
+%   res - action result
+%   state - goal state
 %--------------------------------------------------------------------------
 
-    %% Init
-    r = optns{'rHandle'};    
+    %% Input Handling
+    if nargin < 2
+        error('doGrip requires at least 2 arguments: type and optns');
+    end
 
-    % Create a gripper goal action message
-    grip_msg = rosmessage(r.grip_action_client);
+    % Set default grip position if not provided
+    if nargin < 3
+        doGripValue = 0.8;  % Default pick (closed) position
+    end
 
-    %% Testing if setting FeedbackFcn to 0 minimizes the loss connection
+    %% Get robot handle from optns
+    if isa(optns, 'containers.Map') && isKey(optns, 'rHandle')
+        r = optns('rHandle');
+    else
+        error('Missing or invalid rHandle in optns. Must be containers.Map with key ''rHandle''.');
+    end
+
+    % Check if grip_action_client exists and is valid
+    if ~isprop(r, 'grip_action_client') || isempty(r.grip_action_client)
+        error('grip_action_client not found or is empty in rHandle');
+    end
+
+    %% Create grip goal message
+    grip_goal = rosmessage(r.grip_action_client);  % Assumes FollowJointTrajectoryGoal
+
+    % Optional: remove feedback/result callback functions
     r.grip_action_client.FeedbackFcn = [];
     r.grip_action_client.ResultFcn = [];
 
-    %% Set Grip Pos by default to pick / close gripper
-    if nargin==3
-        type = 'pick';
-        gripPos = doGripValue;
+    %% Set grip position
+    if strcmpi(type, 'place')
+        gripPos = 0;  % Open
+    elseif strcmpi(type, 'pick')
+        gripPos = doGripValue;  % Close
+    else
+        error('Unknown grip type: %s. Use ''pick'' or ''place''.', type);
     end
 
-    % Modify it if place (i.e. open)
-    if strcmp(type,'place')
-        gripPos = 0;           
-    end
+    %% Pack the goal
+    grip_goal = packGripGoal_struct(gripPos, grip_goal, optns);
 
-    %% TODO: Pack gripper information intro ROS message
-
-
-    %% Pending: Check if fingers already at goal
-    % Get current finger position
-    % Compare with with goal
-    % If so, do not call action
-    
-    %% Send action goal
+    %% Send grip goal
     disp('Sending grip goal...');
-
-    try waitForServer(r.grip_action_client,2)
-        disp('Connected to Grip server. Moving fingers...')
-        [res,state,status] = sendGoalAndWait(r.grip_action_client,grip_goal);
-    catch
-        % Re-attempt
-        disp('No server..? Trying again...');
-        [res,state,status] = sendGoalAndWait(r.grip_action_client,grip_goal);
-    end    
+    try
+        waitForServer(r.grip_action_client, 2);  % Wait up to 2 seconds
+        disp('Connected to grip action server.');
+        [res, state] = sendGoalAndWait(r.grip_action_client, grip_goal);
+    catch ME
+        warning('First attempt failed: %s', ME.message);
+        try
+            pause(0.5);  % Retry delay
+            [res, state] = sendGoalAndWait(r.grip_action_client, grip_goal);
+        catch
+            error('Failed to connect or send grip goal on retry.');
+        end
+    end
 end

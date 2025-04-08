@@ -1,7 +1,7 @@
 function traj_goal = convert2ROSPointVec(mat_joint_traj, robot_joint_names, traj_steps, traj_duration, traj_goal, optns)
 %--------------------------------------------------------------------------
 % convert2ROSPointVec
-% Converts all of the matlab joint trajectory values into a vector of ROS
+% Converts all of the MATLAB joint trajectory values into a vector of ROS
 % Trajectory Points. 
 % 
 % Make sure all messages have the same DataFormat (i.e. struct)
@@ -12,7 +12,7 @@ function traj_goal = convert2ROSPointVec(mat_joint_traj, robot_joint_names, traj
 % traj_goal (FollowJointTrajectoryGoal)
 % optns (dict) - traj_duration, traj_steps, ros class handle
 %
-% Outputs
+% Outputs:
 % vector of TrajectoryPoints (1 x n)
 %--------------------------------------------------------------------------
     
@@ -22,22 +22,34 @@ function traj_goal = convert2ROSPointVec(mat_joint_traj, robot_joint_names, traj
     % Compute time step as duration over steps
     timeStep = traj_duration / traj_steps;
     
-    % TODO: Set joint names. Note: must remove finger at index 2
-    traj_goal.Trajectory.JointNames = 
-    
+    % Set joint names. Assuming robot_joint_names is a cell array
+    traj_goal.Trajectory.JointNames = robot_joint_names;
   
     %% Set Points
+    % Create an array of TrajectoryPoint messages
+    points = cell(1, traj_steps);
 
-    % Set an array of cells (currently only using 1 pt but can be extended)
-    points = cell(1,traj_steps);
-
-    % TODO: Create Point Message
+    % Iterate through trajectory points
+    for i = 1:traj_steps
+        % Create a new TrajectoryPoint message for each trajectory step
+        point_msg = rosmessage('trajectory_msgs/JointTrajectoryPoint');
+        
+        % Set position for each joint (transpose to match expected format)
+        point_msg.Positions = mat_joint_traj(i, :).';
+        
+        % Set velocities to zero (if not required, else set according to your needs)
+        point_msg.Velocities = zeros(size(mat_joint_traj(i, :)));
+        
+        % Set accelerations to zero (if not required, else set according to your needs)
+        point_msg.Accelerations = zeros(size(mat_joint_traj(i, :)));
+        
+        % Set the time for each point to the time step
+        point_msg.TimeFromStart = rosduration(i * timeStep); % Time from start
+        
+        % Add the point to the points array
+        points{i} = point_msg;
+    end
     
-    % TODO: Fill r.point: extract each waypoint and set it as a 6x1 (use transpose)
-
-    % TODO: Set inside points cell
-    
-
-    % TODO: Copy points to traj_goal.Trajectory.Points
-    
+    % Assign the points array to the trajectory goal
+    traj_goal.Trajectory.Points = points;
 end

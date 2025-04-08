@@ -1,55 +1,23 @@
-function gripGoal = packGripGoal_struct(pos,gripGoal,optns)
-    %----------------------------------------------------------------------
-    % packGripGoal
-    %----------------------------------------------------------------------
-    % This function will populate gripGoal with all information necessary
-    % in a control_msgs/FollowJointTrajectoryGoal message.
-    %
-    % This functions assumes a single waypoint for the gripper, i.e. open
-    % or close. 
-    %
-    % The function will accomplish 3 steps:
-    % 1) Set Point, name and duration. 
-    % 2) Set Goal Tolerance via a control_msgs/JointTolerance message type
-    % 3) Set a trajectory_msgs/JointTrajectoryPoint with time/pos/vel/accel/effort
-    %
-    % Input Arguments:
-    % pos (double): a position where 0 is open and 
-    % gripGoal (control_msgs/FollowJointTrajectoryGoal)
-    %
-    % Output
-    % A populated gripGoal message
-    %----------------------------------------------------------------------
-    r = optns{'rHandle'};
+function grip_goal = packGripGoal_struct(gripPos, grip_goal, optns)
+    % Assuming you want to create a simple gripper trajectory with positions
+    % and possibly velocities, without efforts (as this is not recognized).
     
+    % Example: Joint names and positions based on the grip position
+    jointWaypoints = [gripPos];  % Assuming only one gripper joint
     
-    % 1. Set Point, name and Duration
-    jointWaypoints = pos;                % Set position of way points
-    jointWaypointTimes = 0.01;             % Time at which action is launched
-    numJoints = size(jointWaypoints,1);    % Only 1 joint for gripper
-
-    % TODO: Fill name of left finger 
-    gripGoal.Trajectory.JointNames = 
+    % Set joint names (for example, gripper joints)
+    grip_goal.Trajectory.JointNames = {'gripper_joint'};  % Adjust as needed
     
-    % Time Stamp
-    if numJoints == 1
-
-        % Set duration to 1 sec (or faster)
-        r.trajPts.TimeFromStart   = 
+    % Initialize the points structure (typically a cell array)
+    points = rosmessage('trajectory_msgs/JointTrajectoryPoint');
     
-    else
-        r.trajPts.TimeFromStart   = rosduration(jointWaypointTimes,'DataFormat', 'struct');
-    end
+    % Set positions (e.g., the gripper's position)
+    points.Positions = jointWaypoints;  % Set joint position
     
-    % TODO: Position - set to relevant position
-    r.trajPts.Positions       = 
-
-    % Velocities
-    r.trajPts.Velocities      = zeros(size(jointWaypoints));
-
-    % Accelerations
-    r.trajPts.Accelerations   = zeros(size(jointWaypoints));
+    % Optionally: Set velocities and accelerations (if required)
+    points.Velocities = zeros(size(jointWaypoints));  % Placeholder (adjust as needed)
+    points.Accelerations = zeros(size(jointWaypoints));  % Placeholder (adjust as needed)
     
-    % Copy trajPts --> gripGoal.Trajectory.Points
-    gripGoal.Trajectory.Points = r.trajPts;
+    % Set points into the trajectory
+    grip_goal.Trajectory.Points = points;
 end
