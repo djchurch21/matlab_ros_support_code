@@ -2,15 +2,15 @@ function [bboxes, scores, labels, numObjects, myImg, annotatedImage] = getLabele
 % ------------------------------------------------------------------------
 % Takes a picture by accessing a subscriber, loads the dector and labels
 % the image taken, and displays it.
-% 
-% Input: 
+%
+% Input:
 %   optns - to access the subscriber to take a pic through the
 %                rosClass
 % Outputs:
 %   bboxes - P-by-4 matrix defining P bounding boxes. Each row of bboxes
 %              contains a four-element vector, [x, y, width, height]. This
 %              vector specifies the upper-left corner and size of a bounding
-%              box in pixels 
+%              box in pixels
 %   scores - confidence scores for each bounding box (PX1)
 %   labels - labels assigned to the bounding boxes (PX1)
 %   numObjects - number of objects detected ( would also be P )
@@ -27,20 +27,21 @@ function [bboxes, scores, labels, numObjects, myImg, annotatedImage] = getLabele
 
     rosImg  = receive(r.rgb_sub);
     myImg   = rosReadImage(rosImg,"PreserveStructureOnRead",true);
-    
+   
     %% Bounding Boxes
     disp("Computing bounding boxes, scores, and labels...")
 
     %% According to strategy leverage different detectors...
-    pretrained = r.general_detector;
+    pretrained = load("./detectors/detector_gral_sim.mat");
     trainedYoloNet = pretrained.detector;
 
     %% TODO: Detect objects using yolo. Output bboxes, scores, labels. Threshold of 0.7
-    [bboxes,scores,labels] =    
+    [bboxes,scores,labels] =    detect(trainedYoloNet,myImg,Threshold=0.7);
+    numObjects = size(bboxes,1);
 
     %% TODO: Visualize the detected objects' bounding boxes by calling insertObjectAnnotation and save to annotatedImage
     disp("Drawing bounding boxes...")
-    annotatedImage = 
+    annotatedImage = insertObjectAnnotation(im2uint8(myImg), 'Rectangle', bboxes, string(labels)+":" +string(scores));
 
     % Display
     if optns{'debug'}
@@ -49,8 +50,4 @@ function [bboxes, scores, labels, numObjects, myImg, annotatedImage] = getLabele
 
     %% Specify percentage of acceptable bounding box
     numObjects = size(bboxes,1);
-
 end
-
-
-
